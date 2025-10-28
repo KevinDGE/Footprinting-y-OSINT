@@ -1,0 +1,16 @@
+# Entorno virtual
+venv/
+.env
+example.env
+
+# Artefactos Python
+__pycache__/
+*.pyc
+
+# Resultados / salidas
+output_passive.json
+subdomains.csv
+
+# Editor / OS
+.vscode/
+.DS_Store
