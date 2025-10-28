@@ -11,11 +11,9 @@
 `footprint_complete.py` es una herramienta en Python para **reconocimiento pasivo** sobre dominios. Por diseño realiza únicamente **acciones pasivas** por defecto (DNS, WHOIS/RDAP, crt.sh, heurísticas de subdominios). El script contiene un **bloque activo** (handshake TLS, fetch HTTP/HTTPS, consultas a Shodan) que **está deshabilitado por defecto** y debe habilitarse explícitamente mediante flags o variables de entorno. Esto reduce el riesgo de realizar operaciones intrusivas sin permiso. 🔒🛡️
 
 ## Contenido del repositorio
-/repo-root
 ├─ footprint_complete.py
 ├─ README.md          
 ├─ requirements.txt
-├─ example.env
 ├─ .gitignore
 ├─ LICENSE
 
