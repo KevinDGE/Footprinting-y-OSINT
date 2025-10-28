@@ -1,123 +1,195 @@
-# Footprinting-y-OSINT
-Aprender y automatizar técnicas de footprinting y OSINT en equipo usando herramientas Python (dnspython, python-whois, shodan, python-nmap u otras) para recolectar y correlacionar información pública.
+# footprint_complete 🔎 — README
 
-Equipo: Nano
-Integrantes: Kevin Grimaldo, Alejandro Martinez, Fernando Garza
-Materia: Seguridad Informática / Hacking Ético
-Fecha: 23 de octubre de 2025
-Dominio usado: testphp.vulnweb.com (sitio educativo libre de Acunetix Demo)
-Permiso: No se requiere autorización, ya que es un entorno público para pruebas de seguridad.
+**Equipo:** Nano  
+**Integrantes:** Kevin Grimaldo, Alejandro Martinez, Fernando Garza  
+**Materia:** Seguridad Informática / Hacking Ético  
+**Fecha:** 23 de octubre de 2025  
+**Dominio usado:** `testphp.vulnweb.com` (sitio educativo libre de Acunetix Demo)  
+**Permiso:** No se requiere autorización, ya que es un entorno público para pruebas de seguridad. ✅
 
-🧩 Objetivo
+## Resumen
+`footprint_complete.py` es una herramienta en Python para **reconocimiento pasivo** sobre dominios. Por diseño realiza únicamente **acciones pasivas** por defecto (DNS, WHOIS/RDAP, crt.sh, heurísticas de subdominios). El script contiene un **bloque activo** (handshake TLS, fetch HTTP/HTTPS, consultas a Shodan) que **está deshabilitado por defecto** y debe habilitarse explícitamente mediante flags o variables de entorno. Esto reduce el riesgo de realizar operaciones intrusivas sin permiso. 🔒🛡️
 
-Automatizar la recolección pasiva y activa (protegida) de información pública sobre un dominio, aplicando técnicas de footprinting y OSINT, utilizando Python y librerías de seguridad.
+## Contenido del repositorio
+/repo-root
+├─ footprint_complete.py
+├─ README.md          
+├─ requirements.txt
+├─ example.env
+├─ .gitignore
+├─ LICENSE
 
-El script recopila información pública (DNS, WHOIS/RDAP, Shodan, certificados TLS, subdominios, headers HTTP) y genera:
+## Variables de control y mecanismo de autorización 🔧
 
-Un reporte estructurado en formato JSON (output_passive.json).
+El mecanismo de control permite habilitar o deshabilitar las acciones activas de forma explícita y segura.
 
-Una lista de subdominios en CSV (subdomains.csv).
-
-Soporte opcional para Shodan (requiere API Key).
-
-⚙️ Dependencias
-
-Instala las librerías necesarias:
-
-pip install dnspython requests cryptography python-whois beautifulsoup4
-
-
-🔐 Opcional: para usar Shodan, instala:
-
-pip install shodan
+- `AUTHORIZED` — variable en el script (por defecto `False`):
+  ```python
+  AUTHORIZED = False
 
 
-▶️ Ejecución paso a paso
-1️⃣ Modo pasivo (seguro)
+**No** cambies a `True` en el código que vas a commitear; usar flags/entorno es más seguro.
 
-Este modo NO interactúa activamente con el objetivo.
-Ejecuta:
+* Flags y variables de entorno:
 
+  * `--authorize` (flag CLI) — habilita bloque activo SOLO para la ejecución actual.
+  * `--auth-token <token>` (CLI) — token que se compara con `FOOTPRINT_AUTH_TOKEN` en entorno.
+  * `FOOTPRINT_AUTHORIZED` (env) — si está `1`, `true` o `yes` habilita el bloque activo.
+  * `FOOTPRINT_AUTH_TOKEN` (env) — token secreto esperado por `--auth-token`.
+  * `SHODAN_API_KEY` (env) o `--shodan-key` (CLI) — clave para usar Shodan (opcional). **Además** requiere autorización.
+
+> El script imprime en la salida si ejecutó o saltó el bloque activo, y por qué. 📣
+
+
+## ¿Qué hace por defecto (modo PASIVO)? 🧪
+
+Acciones que se ejecutan sin autorización explícita:
+
+* Consultas DNS: A, AAAA, MX, NS, TXT, CNAME (con timeouts y reintentos).
+* WHOIS (python-whois) y fallback a RDAP (`rdap.org`).
+* Consulta a `crt.sh` para extraer subdominios desde certificados.
+* Heurística de subdominios comunes (www, api, admin, etc.).
+* Guarda resultados en `output_passive.json` y `subdomains.csv`.
+
+Estas operaciones son no-intrusivas y están pensadas para minimizar impacto y riesgo. ✅
+
+## Bloque ACTIVO — ¿qué incluye? ⚠️
+
+Acciones que **solo** se ejecutan si autorizas explícitamente:
+
+* Handshake TLS para extraer certificados (`tls_info`).
+* Fetch HTTP/HTTPS (cabeceras, robots.txt, sitemaps, parseo de enlaces).
+* Búsqueda en Shodan (si se proporciona clave y autorización).
+
+Estas operaciones implican conexiones directas y uso de APIs externas; pueden ser consideradas intrusivas. Ejecuta solo con permiso. 🚨
+
+
+## Cómo activar el bloque activo (formas seguras) ✅🔐
+
+**Recomendación general:** usa `--authorize` o token temporal; evita cambiar `AUTHORIZED` en el código compartido.
+
+### Opción A — Flag temporal (recomendado)
+
+bash
+python3 footprint_complete.py --target example.com --authorize
+
+Activa el bloque activo solo para esa ejecución.
+
+### Opción B — Token temporal (recomendado en entornos compartidos)
+
+1. Exporta token en la sesión (no en el repo):
+
+bash
+export FOOTPRINT_AUTH_TOKEN="mi_token_temporal_ABC123"
+
+
+2. Ejecuta con token:
+
+bash
+python3 footprint_complete.py --target example.com --auth-token mi_token_temporal_ABC123
+
+
+3. Elimina token de la sesión:
+
+bash
+unset FOOTPRINT_AUTH_TOKEN
+
+
+### Opción C — Variable booleana
+
+bash
+export FOOTPRINT_AUTHORIZED=1
+python3 footprint_complete.py --target example.com
+unset FOOTPRINT_AUTHORIZED
+
+
+### Shodan
+
+Proporciona la clave de Shodan temporalmente:
+
+bash
+export SHODAN_API_KEY="tu_clave_shodan"
+python3 footprint_complete.py --target example.com --authorize --shodan-key $SHODAN_API_KEY
+unset SHODAN_API_KEY
+
+## Checklist de activación segura ☑️
+
+1. Verifica que tienes permiso explícito del propietario del dominio.
+2. Prefiere `--authorize` o token temporal en lugar de editar el script.
+3. No incluyas claves/tokens en el repositorio (usar `.gitignore`).
+4. Revisa la salida del script para confirmar qué se ejecutó.
+5. Revoca/`unset` variables de entorno al terminar. 🔁
+
+
+## Advertencias legales y éticas ⚖️
+
+* Usa este script **solo** sobre dominios que poseas o para los que tengas permiso explícito.
+* Aunque `testphp.vulnweb.com` está permitido para pruebas demo, para cualquier otro dominio consigue autorización por escrito.
+* Revisa términos de servicio de APIs (p. ej. Shodan) antes de usarlas.
+* El equipo no se responsabiliza por el uso indebido de la herramienta. 🚨
+
+
+## Instalación y dependencias 🧰
+
+Recomendado: crear y activar un virtualenv:
+
+bash
+python3 -m venv venv
+source venv/bin/activate
+
+Instala dependencias:
+
+bash
+pip install -r requirements.txt
+
+## Ejemplos de uso 🧾
+
+* **Modo pasivo (por defecto)**
+
+bash
 python3 footprint_complete.py --target testphp.vulnweb.com
 
 
-Salida esperada en consola:
+* **Modo activo — ejecución puntual**
 
-[2025-10-23T20:30:00Z] iniciando recoleccion pasiva para: testphp.vulnweb.com
-[2025-10-23T20:30:10Z] guardado output_passive.json
-[2025-10-23T20:30:10Z] guardado subdomains.csv (entradas: X)
-[2025-10-23T20:30:10Z] FIN
+bash
+python3 footprint_complete.py --target testphp.vulnweb.com --authorize --shodan-key YOUR_SHODAN_KEY
 
 
-Archivos generados:
+* **Modo con token**
 
-output_passive.json: reporte estructurado con secciones DNS, WHOIS, Shodan, TLS, HTTP.
-
-subdomains.csv: lista con los subdominios encontrados.
-
-🧱 Estructura del JSON generado
-
-El archivo output_passive.json contiene las siguientes secciones:
-
-Sección	Descripción
-metadata	Dominio, fecha y nombre del script
-dns	Registros A, AAAA, MX, NS, TXT, CNAME
-whois	Información WHOIS o fallback RDAP
-crtsh	Subdominios extraídos de certificados públicos
-subdominios	Lista de subdominios únicos (DNS + crt.sh)
-tls	Certificado público del sitio (si está disponible)
-http	Headers, robots.txt, sitemap y enlaces detectados
-shodan	Información pública de IP si se usa API Key
-
-🧾 Ejemplo de ejecución
-
-Archivo output_passive.json (fragmento):
-
-{
-  "metadata": {
-    "target": "testphp.vulnweb.com",
-    "collected_at": "2025-10-23T20:30:47Z",
-    "tool": "footprint_complete.py"
-  },
-  "dns": {
-    "A": ["44.228.249.3"],
-    "TXT": ["google-site-verification:toEctYsulNIxgraKk7H3z58PCyz2IOCc36pIupEPmYQ"]
-  },
-  "http": {
-    "status_code": 200,
-    "headers": {
-      "Server": "nginx/1.19.0",
-      "X-Powered-By": "PHP/5.6.40"
-    },
-    "links_found": ["index.php", "cart.php", "login.php", "guestbook.php"]
-  }
-}
+bash
+export FOOTPRINT_AUTH_TOKEN="temporal"
+python3 footprint_complete.py --target testphp.vulnweb.com --auth-token temporal
+unset FOOTPRINT_AUTH_TOKEN
 
 
-Archivo subdomains.csv (ejemplo):
+## Archivos generados 📤
 
-subdomain	found_at
-testphp.vulnweb.com	2025-10-23T20:30:47Z
-www.testphp.vulnweb.com
-	2025-10-23T20:30:48Z
+* `output_passive.json` — reporte completo; incluye `metadata.authorized` indicando si el bloque activo se ejecutó.
+* `subdomains.csv` — lista de subdominios detectados con timestamp.
 
-✅ Seguridad y ética
+## Mensajes y advertencias en la salida del script 📣
 
-El script no ejecuta escaneo activo por defecto.
+Al iniciar, el script imprime:
 
-Solo realiza consultas pasivas permitidas (DNS, WHOIS/RDAP, crt.sh, Shodan, HTTP HEAD/GET).
+* target y timestamp.
+* si está en **modo AUTORIZADO** o **NO autorizado**.
+* qué módulos/acciones fueron **saltados** por falta de autorización (ej. TLS, HTTP, Shodan).
 
-Cumple las políticas académicas y legales.
+Ejemplo:
 
-Se debe conservar la evidencia de permisos por 12 meses si se habilita el bloque activo.
+[2025-10-23T12:00:00Z] iniciando recoleccion para: testphp.vulnweb.com
+[2025-10-23T12:00:00Z] modo NO autorizado: TLS/HTTP/Shodan serán saltados...
+[2025-10-23T12:00:10Z] guardado output_passive.json
 
-🧮 Créditos y referencias
 
-Sitio de práctica: http://testphp.vulnweb.com/
- (Acunetix Demo)
+## Contribuciones y licencia 🧩
 
-Librerías: dnspython, requests, python-whois, cryptography, BeautifulSoup4
+* Contribuciones: abrir issues o pull requests.
+* Reglas para cambios que afectan el bloque activo:
 
-API Pública: https://crt.sh, https://rdap.org
-
-Normas éticas: Política de uso responsable y pruebas con consentimiento.
+  * Deben mantener por defecto el comportamiento **no autorizado**.
+  * Documentar cambios en README.
+  * Añadir mensajes de advertencia visibles en la salida.
+* **Licencia:** MIT (ver `LICENSE`).
