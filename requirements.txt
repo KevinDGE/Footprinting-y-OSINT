@@ -1,0 +1,7 @@
+dnspython
+requests
+cryptography
+python-whois
+beautifulsoup4
+# opcional (solo si vas a usar Shodan)
+# shodan
